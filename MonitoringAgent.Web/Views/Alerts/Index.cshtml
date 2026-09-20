@@ -1,0 +1,433 @@
+@using MonitoringAgent.Web.Models
+@using System.Text.Encodings.Web
+@model PaginatedList<GroupedAlertDto>
+
+<div class="container py-1">
+    <div class="d-flex justify-content-between align-items-end mb-1">
+        <div>
+            <h1 class="fw-bold mb-0">System Incidents (Grouped)</h1>
+            <p class="text-secondary small">Related alerts are grouped for easier management.</p>
+        </div>
+        <div>
+            <span class="badge bg-primary rounded-pill px-3">Page @Model.PageIndex of @Model.TotalPages</span>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="glass-card mb-4 p-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Severity</label>
+                <select name="severity" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All</option>
+                    <option value="High" selected="@(ViewBag.Severity == "High")">High</option>
+                    <option value="Medium" selected="@(ViewBag.Severity == "Medium")">Medium</option>
+                    <option value="Low" selected="@(ViewBag.Severity == "Low")">Low</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Category</label>
+                <select name="category" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All Categories</option>
+                    @if (ViewBag.Categories != null)
+                    {
+                        foreach (var cat in (List<string>)ViewBag.Categories)
+                        {
+                            <option value="@cat" selected="@(ViewBag.Category == cat)">@cat</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Metric / State</label>
+                <select name="metric" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All States</option>
+                    @if (ViewBag.Metrics != null)
+                    {
+                        foreach (var m in (List<string>)ViewBag.Metrics)
+                        {
+                            <option value="@m" selected="@(ViewBag.MetricFilter == m)">@m</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Database</label>
+                <select name="database" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All</option>
+                    @if (ViewBag.Databases != null)
+                    {
+                        foreach (var db in (List<string>)ViewBag.Databases)
+                        {
+                            <option value="@db" selected="@(ViewBag.Database == db)">@(db ?? "Instance")</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Target Resource</label>
+                <select name="targetResource" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All</option>
+                    @if (ViewBag.TargetResources != null)
+                    {
+                        foreach (var item in ViewBag.TargetResources)
+                        {
+                            <option value="@item.Value" selected="@(ViewBag.TargetResource == item.Value)">@item.Display</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">From</label>
+                <input type="date" name="fromDate" class="form-control bg-dark text-light border-secondary" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">To</label>
+                <input type="date" name="toDate" class="form-control bg-dark text-light border-secondary" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-10 mt-3">
+                <label class="stat-label mb-2">Search Message</label>
+                <input type="text" name="search" class="form-control bg-dark text-light border-secondary" placeholder="Search by message content..." value="@ViewBag.Search" />
+            </div>
+            <div class="col-md-2 mt-3">
+                <button type="submit" class="btn btn-info w-100 fw-bold">APPLY</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Alert List -->
+    <div class="row">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="col-12 text-center py-5 glass-card">
+                <h4 class="text-secondary">No active incidents found. All clear!</h4>
+            </div>
+        }
+        else
+        {
+            @foreach (var alert in Model.Items)
+            {
+                var severityClass = alert.Severity == "High" ? "severity-high" : (alert.Severity == "Medium" ? "severity-medium" : "severity-low");
+                var badgeClass = alert.Severity == "High" ? "badge-danger" : (alert.Severity == "Medium" ? "badge-warning" : "badge-success");
+                
+                <div class="col-12 mb-2">
+                    <div class="glass-card @severityClass">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="status-badge @badgeClass">@alert.Severity</span>
+                                <h4 class="mb-0 d-flex align-items-center">
+                                    @alert.Category 
+                                    @if(alert.OccurrenceCount > 1) { 
+                                        <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2" 
+                                                data-server="@alert.ServerName" 
+                                                data-database="@alert.DatabaseName" 
+                                                data-category="@alert.Category" 
+                                                data-message="@alert.Message" 
+                                                onclick="openHistoryFromBtn(this)">
+                                            <span class="badge bg-secondary cursor-pointer hover-info" title="Click to view history">x @alert.OccurrenceCount occurrences <i class="bi bi-graph-up ms-1"></i></span> 
+                                        </button>
+                                    }
+                                </h4>
+                            </div>
+                            <span class="text-secondary small">Latest: @alert.LatestRaisedAt.AddHours(3).ToString("f")</span>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="stat-label block mb-1">Impact Description</label>
+                                    <div class="fs-5 fw-bold text-info">@alert.Message</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="stat-label block mb-1">Problem & Root Cause</label>
+                                    <div class="small">
+                                        <div class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>@alert.Problem</div>
+                                        <div class="text-secondary mt-1"><i class="bi bi-info-circle me-1"></i>@alert.RootCause</div>
+                                    </div>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="stat-label block mb-1">Target Resource</label>
+                                    <div class="text-light">@alert.DatabaseName (<span class="fw-bold">@alert.ServerName</span>)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 border-start border-secondary ps-4">
+                                <label class="stat-label block mb-2">Metrics & Score</label>
+                                <div class="mb-2">
+                                    <span class="small text-secondary">Impact Score:</span>
+                                    <span class="fw-bold @(alert.ImpactScore > 70 ? "text-danger" : "text-warning")">@alert.ImpactScore</span>
+                                </div>
+                                @if(!string.IsNullOrEmpty(alert.Metric))
+                                {
+                                    <div class="p-2 bg-dark rounded border border-secondary border-opacity-50">
+                                        <div class="small text-secondary">@alert.Metric</div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold">@alert.CurrentValue.ToString("N2")</span>
+                                            <span class="small text-info">Limit: @alert.ThresholdValue.ToString("N0")</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-md-4 border-start border-secondary ps-4">
+                                <label class="stat-label block mb-2">Remediation SQL Script</label>
+                                <div class="p-3 bg-black rounded border border-secondary" style="font-family: 'Courier New', monospace; font-size: 0.85rem; max-height: 150px; overflow-y: auto;">
+                                    <code style="color: #22d3ee;">@alert.Recommendation</code>
+                                </div>
+                                <div class="mt-3 text-end">
+                                    <button class="btn btn-sm btn-outline-light" onclick="copyToClipboard(this)">COPY SCRIPT</button>
+                                    <form asp-action="Acknowledge" method="post" class="d-inline">
+                                        <input type="hidden" name="ids" value="@string.Join(",", alert.AlertIds)" />
+                                        <button type="submit" class="btn btn-sm btn-info ms-2">RESOLVE ALL (@alert.OccurrenceCount)</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-center mt-5">
+        <nav>
+            <ul class="pagination pagination-lg">
+                <li class="page-item @(!Model.HasPreviousPage ? "disabled" : "")">
+                    <a class="page-link bg-dark border-secondary text-info" href="@Url.Action("Index", new { page = Model.PageIndex - 1, severity = ViewBag.Severity, category = ViewBag.Category, database = ViewBag.Database, targetResource = ViewBag.TargetResource, search = ViewBag.Search, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">Previous</a>
+                </li>
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                        <a class="page-link @(i == Model.PageIndex ? "bg-info border-info text-white" : "bg-dark border-secondary text-light")" href="@Url.Action("Index", new { page = i, severity = ViewBag.Severity, category = ViewBag.Category, database = ViewBag.Database, targetResource = ViewBag.TargetResource, search = ViewBag.Search, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">@i</a>
+                    </li>
+                }
+                <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
+                    <a class="page-link bg-dark border-secondary text-info" href="@Url.Action("Index", new { page = Model.PageIndex + 1, severity = ViewBag.Severity, category = ViewBag.Category, database = ViewBag.Database, targetResource = ViewBag.TargetResource, search = ViewBag.Search, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary shadow-lg">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <div>
+                    <h5 class="modal-title fw-bold text-info" id="historyTitle">Incident Occurrence History</h5>
+                    <div id="historySubtitle" class="small text-secondary"></div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="glass-card mb-4" style="background: rgba(0,0,0,0.3);">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="stat-label">Occurrence Trend (Hourly)</label>
+                                <span class="small text-secondary italic" style="font-size: 0.65rem;">Hint: Use mouse wheel to zoom, drag to pan</span>
+                            </div>
+                            <div style="height: 300px;">
+                                <canvas id="historyChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-card" style="background: rgba(0,0,0,0.3);">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="stat-label">Remediation SQL Script</label>
+                                <button class="btn btn-sm btn-link text-info text-decoration-none p-0" onclick="copyToClipboard(this)">COPY</button>
+                            </div>
+                            <div class="sql-code">
+                                <code id="modalScript" style="color: #22d3ee;">-- No script available</code>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="glass-card h-100 d-flex flex-column" style="background: rgba(0,0,0,0.3); min-height: 450px;">
+                            <label class="stat-label mb-3">Recent Occurrences</label>
+                            <div id="historyList" class="flex-grow-1" style="overflow-y: auto;">
+                                <!-- Loaded via JS -->
+                            </div>
+                            <div id="historyPagination" class="mt-3 pt-2 border-top border-secondary border-opacity-10 d-flex justify-content-center">
+                                <!-- Pagination links loaded via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .hover-info:hover { background-color: var(--primary) !important; color: white !important; }
+    .history-item { 
+        padding: 8px 12px; 
+        border-bottom: 1px solid rgba(255,255,255,0.05); 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
+    .history-item:hover { background: rgba(255,255,255,0.02); }
+    .sql-code {
+        font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+        background: #000;
+        border-radius: 8px;
+        padding: 15px;
+        border: 1px solid var(--glass-border);
+        font-size: 0.85rem;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        let historyChart = null;
+        let historyModal = null;
+        let fullHistoryData = [];
+        const itemsPerPage = 10;
+
+        $(function() {
+            historyModal = new bootstrap.Modal('#historyModal');
+        });
+
+        function openHistoryFromBtn(btn) {
+            const data = btn.dataset;
+            const recommendation = btn.closest('.glass-card').querySelector('code').innerText;
+            openHistoryModal(data.server, data.database, data.category, data.message, recommendation);
+        }
+
+        function openHistoryModal(server, database, category, message, script) {
+            $('#historySubtitle').text(`${category} on ${database || 'Instance'} (${server})`);
+            $('#historyList').html('<div class="text-center py-5 text-secondary"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</div>');
+            $('#historyPagination').empty();
+            $('#modalScript').text(script || 'No remediation script available.');
+            
+            if (historyModal) historyModal.show();
+
+            const url = `/Alerts/GetHistory?server=${encodeURIComponent(server)}&database=${encodeURIComponent(database || '')}&category=${encodeURIComponent(category)}&message=${encodeURIComponent(message)}`;
+            
+            $.get(url, function(data) {
+                fullHistoryData = data.history;
+                renderHistoryPage(1);
+                renderHistoryChart(data.chartData);
+            }).fail(function() {
+                $('#historyList').html('<div class="alert alert-danger m-3">Failed to load history data.</div>');
+            });
+        }
+
+        function renderHistoryPage(page) {
+            const start = (page - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const items = fullHistoryData.slice(start, end);
+
+            if (items.length === 0) {
+                $('#historyList').html('<div class="text-center py-5 text-secondary">No history records found.</div>');
+                $('#historyPagination').empty();
+                return;
+            }
+
+            let html = '';
+            items.forEach(item => {
+                const date = new Date(item.raisedAt);
+                date.setHours(date.getHours() + 3); // Adjust to Istanbul time manually to fix offset
+                const timeStr = date.toLocaleString('tr-TR');
+                const badgeClass = item.severity === "High" ? "bg-danger" : (item.severity === "Medium" ? "bg-warning" : "bg-success");
+                
+                html += `
+                    <div class="history-item">
+                        <span class="small text-light">${timeStr}</span>
+                        <span class="badge ${badgeClass} p-1" style="font-size: 0.6rem;">${item.severity}</span>
+                    </div>
+                `;
+            });
+            $('#historyList').html(html);
+            renderPaginationUI(page);
+        }
+
+        function renderPaginationUI(currentPage) {
+            const totalPages = Math.ceil(fullHistoryData.length / itemsPerPage);
+            if (totalPages <= 1) {
+                $('#historyPagination').empty();
+                return;
+            }
+
+            let html = '<div class="btn-group btn-group-sm">';
+            
+            // Previous
+            html += `<button class="btn btn-outline-secondary ${currentPage === 1 ? 'disabled' : ''}" onclick="renderHistoryPage(${currentPage - 1})"><i class="bi bi-chevron-left"></i></button>`;
+            
+            // Page numbers (simplified)
+            for (let i = 1; i <= Math.min(totalPages, 5); i++) {
+                html += `<button class="btn ${i === currentPage ? 'btn-info' : 'btn-outline-secondary'}" onclick="renderHistoryPage(${i})">${i}</button>`;
+            }
+            if (totalPages > 5) html += '<button class="btn btn-outline-secondary disabled">...</button>';
+
+            // Next
+            html += `<button class="btn btn-outline-secondary ${currentPage === totalPages ? 'disabled' : ''}" onclick="renderHistoryPage(${currentPage + 1})"><i class="bi bi-chevron-right"></i></button>`;
+            
+            html += '</div>';
+            $('#historyPagination').html(html);
+        }
+
+        function renderHistoryChart(chartData) {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            if (historyChart) historyChart.destroy();
+
+            const labels = chartData.map(d => {
+                const dt = new Date(d.timestamp);
+                dt.setHours(dt.getHours() + 3); // Fix Istanbul offset
+                return dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            });
+            const counts = chartData.map(d => d.count);
+
+            historyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Occurrences',
+                        data: counts,
+                        borderColor: '#00d2ff',
+                        backgroundColor: 'rgba(0, 210, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#00d2ff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        zoom: {
+                            pan: { enabled: true, mode: 'x', modifierKey: null },
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+                        },
+                        tooltip: { backgroundColor: 'rgba(11, 14, 20, 0.9)', titleColor: '#00d2ff', bodyColor: '#fff', borderColor: '#334155', borderWidth: 1 }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxRotation: 0 } }
+                    }
+                }
+            });
+        }
+
+        async function copyToClipboard(btn) {
+            const code = btn.closest('.col-md-7, .glass-card').querySelector('code').innerText;
+            await navigator.clipboard.writeText(code);
+            const originalText = btn.innerText;
+            btn.innerText = 'COPIED!';
+            setTimeout(() => btn.innerText = originalText, 2000);
+        }
+    </script>
+}

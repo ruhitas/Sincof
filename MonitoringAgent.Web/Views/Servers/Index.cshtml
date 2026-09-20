@@ -1,0 +1,105 @@
+@using MonitoringAgent.Web.Data
+@model List<WorkerConfig>
+
+<div class="container py-3">
+    <div class="d-flex justify-content-between align-items-end mb-3">
+        <div>
+            <h1 class="fw-bold mb-0">AGENT <span class="text-info">NETWORKS</span></h1>
+            <p class="text-secondary small">Manage monitoring workers and configurations.</p>
+        </div>
+        <button class="btn btn-outline-info fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#newWorkerModal">
+            <i class="bi bi-plus-lg me-2"></i> NEW WORKER
+        </button>
+    </div>
+
+    <!-- Workers List -->
+    <div class="row">
+        @if (Model.Count == 0)
+        {
+            <div class="col-12">
+                <div class="glass-card text-center py-4">
+                    <i class="bi bi-robot fs-2 text-secondary mb-2 d-block"></i>
+                    <h5 class="text-secondary">No workers registered.</h5>
+                </div>
+            </div>
+        }
+        else
+        {
+            @foreach (var worker in Model)
+            {
+                <div class="col-md-4 mb-3">
+                    <div class="glass-card h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="fw-bold mb-1">@worker.WorkerName</h5>
+                                <span class="badge bg-secondary rounded-pill p-1 px-2" style="font-size: 0.65rem;">ID: @worker.WorkerId</span>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark">
+                                    <li><button class="dropdown-item text-danger" onclick="deleteWorker(@worker.Id, '@worker.WorkerName')">Delete Agent</button></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="stat-label mb-1">Last Config Update</label>
+                            <div class="small text-light">@worker.LastUpdated.AddHours(3).ToString("g")</div>
+                        </div>
+
+                        <div class="mt-auto">
+                            <a asp-action="Manage" asp-route-id="@worker.Id" class="btn btn-sm btn-info w-100 fw-bold">CONFIGURE AGENT</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<!-- New Worker Modal -->
+<div class="modal fade" id="newWorkerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary shadow-lg">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title fw-bold text-info">REGISTER NEW AGENT</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="CreateWorker" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="stat-label mb-2">Worker ID (Unique Identifier)</label>
+                        <input type="text" name="workerId" class="form-control bg-dark border-secondary text-white" placeholder="e.g., PROD-NYC-01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="stat-label mb-2">Display Name</label>
+                        <input type="text" name="workerName" class="form-control bg-dark border-secondary text-white" placeholder="Production NYC Cluster">
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-25 p-3">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CANCEL</button>
+                    <button type="submit" class="btn btn-info fw-bold px-4">CREATE AGENT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function deleteWorker(id, name) {
+        if (confirm(`Are you sure you want to delete worker "${name}" and all its configurations?`)) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '/Servers/DeleteWorker';
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'id';
+            input.value = id;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>

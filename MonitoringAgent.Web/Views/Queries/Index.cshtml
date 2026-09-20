@@ -1,0 +1,173 @@
+@model MonitoringAgent.Web.Models.PaginatedList<MonitoringAgent.Web.Controllers.QuerySummaryViewModel>
+@{
+    ViewData["Title"] = "Query Diagnostics";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h1 class="fw-bold mb-0">Query Diagnostics</h1>
+            <p class="text-secondary small mb-0">Analysis of long-running and resource-intensive queries.</p>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="glass-card mb-4 p-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Target Server</label>
+                <select name="serverName" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All Servers</option>
+                    @if (ViewBag.Servers != null)
+                    {
+                        foreach (var srv in (List<string>)ViewBag.Servers)
+                        {
+                            <option value="@srv" selected="@(ViewBag.SelectedServer == srv)">@srv</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Database</label>
+                <select name="databaseName" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All Databases</option>
+                    @if (ViewBag.Databases != null)
+                    {
+                        foreach (var db in (List<string>)ViewBag.Databases)
+                        {
+                            <option value="@db" selected="@(ViewBag.SelectedDatabase == db)">@db</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Category / Status</label>
+                <select name="category" class="form-select bg-dark text-light border-secondary">
+                    <option value="">All Categories</option>
+                    @if (ViewBag.Categories != null)
+                    {
+                        foreach (var cat in (List<string>)ViewBag.Categories)
+                        {
+                            <option value="@cat" selected="@(ViewBag.SelectedCategory == cat)">@cat</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">From</label>
+                <input type="date" name="fromDate" class="form-control bg-dark text-light border-secondary" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">To</label>
+                <input type="date" name="toDate" class="form-control bg-dark text-light border-secondary" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-info w-100 fw-bold">FILTER</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="col-12 text-center py-5 glass-card">
+                <h4 class="text-secondary">No queries found for the selected criteria.</h4>
+            </div>
+        }
+        else
+        {
+            @foreach (var query in Model.Items)
+            {
+                <div class="col-12 mb-3">
+                    <div class="glass-card">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div>
+                                    <span class="badge bg-secondary border border-secondary text-info px-2 py-1 me-1">
+                                        <i class="bi bi-database me-1"></i>@query.ProviderType
+                                    </span>
+                                    <span class="badge @(query.Category == "LongRunning" ? "bg-warning" : "bg-danger") text-dark px-3 py-1">
+                                        @query.Category
+                                    </span>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 text-light">@query.DatabaseName <span class="text-secondary small">on @query.ServerName</span></h5>
+                                    <span class="text-secondary small font-monospace">Hash: @query.QueryHash</span>
+                                </div>
+                            </div>
+                            <span class="text-secondary small">Last Seen: @query.LastSeen.ToString("f")</span>
+                        </div>
+
+                        <div class="row g-0">
+                            <!-- Metrics Sidebar -->
+                            <div class="col-md-3 pe-4 border-end border-secondary border-opacity-25">
+                                <div class="mb-3">
+                                    <label class="stat-label d-block mb-1">Avg Elapsed Time</label>
+                                    <span class="fs-4 fw-bold text-info">@(query.AvgElapsedTimeUs / 1000.0 > 1000 ? (query.AvgElapsedTimeUs / 1000000.0).ToString("N2") + " s" : (query.AvgElapsedTimeUs / 1000.0).ToString("N0") + " ms")</span>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="stat-label d-block mb-1">Avg CPU Time</label>
+                                    <span class="fs-5 fw-bold text-light">@((query.AvgCpuTimeUs / 1000.0).ToString("N0")) ms</span>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="stat-label d-block mb-1">Total Executions</label>
+                                    <span class="fs-5 fw-bold text-light">@query.TotalExecutions.ToString("N0")</span>
+                                </div>
+                                <div>
+                                    <label class="stat-label d-block mb-1">Total Logical Reads</label>
+                                    <span class="fs-5 fw-bold text-light">@query.TotalLogicalReads.ToString("N0")</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Query Text -->
+                            <div class="col-md-9 ps-4">
+                                <label class="stat-label mb-2">SQL Statement</label>
+                                <div class="p-3 bg-black rounded border border-secondary" style="font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 0.85rem; max-height: 250px; overflow-y: auto;">
+                                    <code style="color: #cbd5e1; white-space: pre-wrap;">@query.QueryText</code>
+                                </div>
+                                <div class="text-end mt-2">
+                                    <button class="btn btn-sm btn-outline-light" onclick="copySql(this)">Copy SQL</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination pagination-lg">
+                    <li class="page-item @(!Model.HasPreviousPage ? "disabled" : "")">
+                        <a class="page-link bg-dark border-secondary text-info" href="@Url.Action("Index", new { page = Model.PageIndex - 1, serverName = ViewBag.SelectedServer, databaseName = ViewBag.SelectedDatabase, category = ViewBag.SelectedCategory, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">Previous</a>
+                    </li>
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                            <a class="page-link @(i == Model.PageIndex ? "bg-info border-info text-white" : "bg-dark border-secondary text-light")" href="@Url.Action("Index", new { page = i, serverName = ViewBag.SelectedServer, databaseName = ViewBag.SelectedDatabase, category = ViewBag.SelectedCategory, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
+                        <a class="page-link bg-dark border-secondary text-info" href="@Url.Action("Index", new { page = Model.PageIndex + 1, serverName = ViewBag.SelectedServer, databaseName = ViewBag.SelectedDatabase, category = ViewBag.SelectedCategory, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        async function copySql(btn) {
+            const code = btn.closest('.ps-4').querySelector('code').innerText;
+            await navigator.clipboard.writeText(code);
+            const originalText = btn.innerText;
+            btn.innerText = 'COPIED!';
+            setTimeout(() => btn.innerText = originalText, 2000);
+        }
+    </script>
+}

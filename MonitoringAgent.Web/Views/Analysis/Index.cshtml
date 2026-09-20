@@ -1,0 +1,239 @@
+@using MonitoringAgent.Web.Models
+@model AnalysisViewModel
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="fw-bold mb-0">Advanced Performance Analysis</h1>
+            <p class="text-secondary">Deep-dive telemetry for SQL Server Instance & Storage performance.</p>
+        </div>
+        <div class="text-end">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-sm btn-outline-info">BACK TO DASHBOARD</a>
+        </div>
+    </div>
+
+    <!-- Metrics Filter Bar -->
+    <div class="glass-card mb-5 p-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="stat-label mb-2">DB Type</label>
+                <select name="dbType" class="form-select bg-dark text-light border-secondary">
+                    <option value="All" selected="@(ViewBag.SelectedDbType == "All")">All Types</option>
+                    @if(ViewBag.DbTypes != null) {
+                        foreach (var type in (List<string>)ViewBag.DbTypes)
+                        {
+                            <option value="@type" selected="@(ViewBag.SelectedDbType == type)">@type</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Server Instance</label>
+                <select name="serverName" class="form-select bg-dark text-light border-secondary">
+                    <option value="">Any Server</option>
+                    @if(ViewBag.Servers != null) {
+                        foreach (var srv in (List<string>)ViewBag.Servers)
+                        {
+                            <option value="@srv" selected="@(ViewBag.SelectedServer == srv)">@srv</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">Start Time</label>
+                <input type="datetime-local" name="fromDate" class="form-control bg-dark text-light border-secondary" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-2">
+                <label class="stat-label mb-2">End Time</label>
+                <input type="datetime-local" name="toDate" class="form-control bg-dark text-light border-secondary" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-info w-100 fw-bold">RUN DIAGNOSTICS</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-xl-6 mb-4">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">CPU Utilization Trend (%)</h5>
+                    <span class="text-info small" style="cursor: help;" title="Drag to zoom, click Run to reset">🖱️ Drag to zoom</span>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="cpuMetricChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6 mb-4">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Memory consumption (MB)</h5>
+                    <span class="text-info small">🖱️ Zoomable</span>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="memoryMetricChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6 mb-4">
+            <div class="glass-card">
+                <h5 class="mb-4">Average Disk Latency (Read/Write MS)</h5>
+                <div style="height: 300px;">
+                    <canvas id="diskMetricChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-6 mb-4">
+            <div class="glass-card">
+                <h5 class="mb-4">DB Platform Indicator (PLE/Cache Hit/Worker Load)</h5>
+                <div style="height: 300px;">
+                    <canvas id="pleMetricChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chartData = @Html.Raw(Json.Serialize(Model.InstanceMetrics));
+            const dbData = @Html.Raw(Json.Serialize(Model.DatabaseMetrics));
+            
+            const labels = (chartData || []).map(d => new Date(d.Timestamp || d.timestamp || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            
+            // Corrected Zoom Configuration for Chart.js 3+
+            const zoomPluginConfig = {
+                zoom: {
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'x',
+                        drag: { enabled: true, backgroundColor: 'rgba(0,129,255,0.1)' }
+                    },
+                    pan: { enabled: true, mode: 'x' }
+                }
+            };
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: zoomPluginConfig
+            };
+
+            // 1. CPU CHART (Mixed)
+            new Chart(document.getElementById('cpuMetricChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Total System CPU %',
+                            data: (chartData || []).map(d => d.CpuUsagePercent ?? d.cpuUsagePercent ?? 0),
+                            borderColor: '#94a3b8',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'DB Engine CPU %',
+                            data: (chartData || []).map(d => d.SqlCpuUsagePercent ?? d.sqlCpuUsagePercent ?? 0),
+                            borderColor: '#0081ff',
+                            backgroundColor: 'rgba(0, 129, 255, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: commonOptions
+            });
+
+            // 2. MEMORY CHART
+            new Chart(document.getElementById('memoryMetricChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'DB Allocated Memory (MB)',
+                            data: (chartData || []).map(d => d.SqlMemoryUsageMb ?? d.sqlMemoryUsageMb ?? 0),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Total System Used RAM',
+                            data: (chartData || []).map(d => d.MemoryUsageMb ?? d.memoryUsageMb ?? 0),
+                            borderColor: '#94a3b8',
+                            borderDash: [5, 5],
+                            backgroundColor: 'transparent',
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: commonOptions
+            });
+
+            // 3. DISK LATENCY CHART
+            const dbLabels = (dbData || []).map(d => new Date(d.Timestamp || d.timestamp || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            new Chart(document.getElementById('diskMetricChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: dbLabels,
+                    datasets: [
+                        {
+                            label: 'Avg Read Latency (ms)',
+                            data: (dbData || []).map(d => d.AvgReadLatencyMs ?? d.avgReadLatencyMs ?? 0),
+                            backgroundColor: '#3b82f6'
+                        },
+                        {
+                            label: 'Avg Write Latency (ms)',
+                            data: (dbData || []).map(d => d.AvgWriteLatencyMs ?? d.avgWriteLatencyMs ?? 0),
+                            backgroundColor: '#f59e0b'
+                        }
+                    ]
+                },
+                options: commonOptions
+            });
+
+            // 4. PLATFORM PRIORITY CHART
+            const dbType = '@ViewBag.SelectedDbType';
+            let label4 = 'Page Life Expectancy (Sec)';
+            let data4 = (chartData || []).map(d => d.PLE ?? d.ple ?? 0);
+            let color4 = '#8b5cf6';
+
+            if (dbType === 'Postgres' || dbType === 'MySql' || dbType === 'Oracle') {
+                 label4 = 'Buffer Cache Hit Ratio (%)';
+                 data4 = (chartData || []).map(d => d.BufferCacheHitRatio ?? d.bufferCacheHitRatio ?? 0);
+                 color4 = '#10b981';
+            } else if (dbType === 'AzureSql') {
+                 label4 = 'Worker Utilization (%)';
+                 data4 = (chartData || []).map(d => d.WorkerUtilizationPercent ?? d.workerUtilizationPercent ?? 0);
+                 color4 = '#f59e0b';
+            } else if (dbType === 'All') {
+                 label4 = 'Average Platform Priority / PLE';
+            }
+
+            new Chart(document.getElementById('pleMetricChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label4,
+                        data: data4,
+                        borderColor: color4,
+                        backgroundColor: 'transparent',
+                        tension: 0.3
+                    }]
+                },
+                options: commonOptions
+            });
+        });
+    </script>
+}

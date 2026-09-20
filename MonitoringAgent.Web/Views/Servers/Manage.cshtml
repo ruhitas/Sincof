@@ -1,0 +1,564 @@
+@using MonitoringAgent.Web.Data
+@model WorkerConfig
+@{
+    var servers = (List<TargetServerConfig>)ViewBag.TargetServers;
+}
+
+<div class="container-fluid px-3 py-2">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <div class="d-flex align-items-center gap-3 mb-1">
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-circle p-1 px-2" title="Go back">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h1 class="fw-bold mb-0">AGENT <span class="text-info">CONFIGURATION</span></h1>
+            </div>
+            <p class="text-secondary small mb-0">Managing <span class="fw-bold text-light">@Model.WorkerName</span> (@Model.WorkerId)</p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-success py-1 px-2 rounded-pill fw-bold" style="font-size: 0.65rem;">ONLINE & SYNCED</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar Navigation -->
+        <div class="col-md-3">
+            <div class="glass-card mb-4 p-0 overflow-hidden sticky-top" style="top: 2rem;">
+                <div class="list-group list-group-flush" id="config-tabs" role="tablist">
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-3 px-4 active" 
+                       id="servers-tab-link" data-bs-toggle="pill" href="#servers-tab" role="tab">
+                       <i class="bi bi-hdd-network me-3 fs-5"></i> TARGET SERVERS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="dbfilters-tab-link" data-bs-toggle="pill" href="#dbfilters-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-database-gear me-3"></i> DATABASE FILTERS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="intervals-tab-link" data-bs-toggle="pill" href="#intervals-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-clock-history me-3"></i> COLLECTION INTERVALS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="toggles-tab-link" data-bs-toggle="pill" href="#toggles-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-toggle-on me-3"></i> FEATURE TOGGLES
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="thresholds-tab-link" data-bs-toggle="pill" href="#thresholds-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-speedometer me-3"></i> ALERT THRESHOLDS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="index-tab-link" data-bs-toggle="pill" href="#index-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-list-check me-3"></i> INDEX ANALYSIS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="advanced-tab-link" data-bs-toggle="pill" href="#advanced-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-cpu me-3"></i> ADVANCED CONTROLS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="api-tab-link" data-bs-toggle="pill" href="#api-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-cloud-arrow-up me-3"></i> API SETTINGS
+                    </a>
+                    <a class="list-group-item list-group-item-action bg-transparent border-0 text-light py-2 px-4" 
+                       id="logging-tab-link" data-bs-toggle="pill" href="#logging-tab" role="tab" style="font-size: 0.9rem;">
+                       <i class="bi bi-file-earmark-text me-3"></i> LOGGING
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Panel -->
+        <div class="col-md-9">
+            <div class="tab-content" id="config-tab-content">
+                
+                <!-- Tab 1: Target Servers -->
+                <div class="tab-pane fade show active" id="servers-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary border-opacity-10">
+                            <h5 class="fw-bold mb-0">MONITORED INSTANCES</h5>
+                            <button class="btn btn-sm btn-info fw-bold" data-bs-toggle="modal" data-bs-target="#newServerModal">
+                                <i class="bi bi-plus-lg me-1"></i> ADD SERVER
+                            </button>
+                        </div>
+                        
+                        @if (servers.Count == 0)
+                        {
+                            <div class="text-center py-5 text-secondary">
+                                <i class="bi bi-database-exclamation fs-3 mb-2 d-block"></i>
+                                <span>No target servers configured for this agent.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover align-middle">
+                                    <thead>
+                                        <tr class="text-secondary small fw-bold">
+                                            <th>ALIAS</th>
+                                            <th>PROVIDER</th>
+                                            <th>CONNECTION STRING</th>
+                                            <th>STATUS</th>
+                                            <th class="text-end">ACTIONS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var srv in servers)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold">@srv.Alias</td>
+                                                <td><span class="badge bg-dark-subtle border border-secondary border-opacity-50 text-white-50 p-1 px-2">@srv.ProviderType</span></td>
+                                                <td class="small text-secondary" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@srv.ConnectionString</td>
+                                                <td>
+                                                    <span class="status-badge @(srv.IsEnabled ? "badge-success" : "bg-dark text-secondary")">@(srv.IsEnabled ? "ACTIVE" : "DISABLED")</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <form asp-action="DeleteTargetServer" method="post" class="d-inline">
+                                                        <input type="hidden" name="id" value="@srv.Id" />
+                                                        <input type="hidden" name="workerConfigId" value="@Model.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1 px-2" title="Remove"><i class="bi bi-trash3"></i></button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Tab: Database Filters -->
+                <div class="tab-pane fade" id="dbfilters-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-4">GLOBAL DATABASE FILTERS</h5>
+                        <div class="mb-4">
+                            <label class="stat-label mb-2">INCLUDE DATABASES (Comma Separated)</label>
+                            <textarea id="include-dbs" class="form-control bg-dark border-secondary text-info mb-4" rows="3">@Model.IncludeDBs</textarea>
+                            
+                            <label class="stat-label mb-2">EXCLUDE DATABASES (Comma Separated)</label>
+                            <textarea id="exclude-dbs" class="form-control bg-dark border-secondary text-danger" rows="3">@Model.ExcludeDBs</textarea>
+                        </div>
+                        <div class="text-end">
+                            <button class="btn btn-info fw-bold" onclick="saveDBFilters()">SAVE DATABASE FILTERS</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">QUICK GUIDE: DATABASE FILTERS</h6>
+                            <ul class="mb-0 opacity-75">
+                                <li><b>IncludeDBs:</b> If not empty, only these databases will be monitored. (Comma separated)</li>
+                                <li><b>ExcludeDBs:</b> These databases will always be ignored (e.g., master, tempdb).</li>
+                                <li><i>Note: These apply to all servers managed by this specific agent.</i></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Intervals -->
+                <div class="tab-pane fade" id="intervals-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-4">COLLECTION INTERVALS</h5>
+                        <div class="mb-4 text-secondary small">Define how often (seconds/minutes) each collector runs.</div>
+                        <div class="mb-4">
+                            <textarea id="intervals-json" class="json-editor form-control" style="height: 300px;">@Model.IntervalsJson</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary btn-load-template" data-type="Intervals">
+                                <i class="bi bi-magic me-1"></i> LOAD PRO TEMPLATE
+                            </button>
+                            <button class="btn btn-info fw-bold btn-save px-4" data-type="Intervals">SAVE INTERVALS</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: COLLECTION INTERVALS</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-6">
+                                    <ul class="mb-0">
+                                        <li><b>MetricsSeconds (60):</b> Performance counters update rate.</li>
+                                        <li><b>QueriesSeconds (300):</b> Expensive query collection window.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-0">
+                                        <li><b>IndexesMinutes (1440):</b> Fragmentation analysis (Daily).</li>
+                                        <li><b>EventsSeconds (15):</b> Critical event scanning frequency.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Toggles -->
+                <div class="tab-pane fade" id="toggles-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-4">FEATURE TOGGLES</h5>
+                        <div class="mb-4">
+                            <textarea id="toggles-json" class="json-editor form-control" style="height: 400px;">@Model.FeatureTogglesJson</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary btn-load-template" data-type="Toggles">
+                                <i class="bi bi-magic me-1"></i> LOAD PRO TEMPLATE
+                            </button>
+                            <button class="btn btn-info fw-bold btn-save px-4" data-type="Toggles">SAVE FEATURES</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: FEATURE TOGGLES</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-4">
+                                    <ul class="mb-2">
+                                        <li><b>EnableMetrics:</b> Collects CPU/RAM data.</li>
+                                        <li><b>EnableQueries:</b> Captures long running SQL.</li>
+                                        <li><b>EnableAlerts:</b> Activates triggering engine.</li>
+                                        <li><b>EnableWaitStats:</b> Analyzes DB wait cycles.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <ul class="mb-2">
+                                        <li><b>EnableBlocking:</b> Detection of locked tables.</li>
+                                        <li><b>EnableDeadlocks:</b> Real-time deadlock capture.</li>
+                                        <li><b>EnableIndex:</b> Missing index & frag analysis.</li>
+                                        <li><b>EnableVlf:</b> Transaction log health tracking.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <ul class="mb-2">
+                                        <li><b>EnableApi:</b> Sending data to dashboard.</li>
+                                        <li><b>EnableTempDb:</b> Space usage monitoring.</li>
+                                        <li><b>EnableLogins:</b> Tracks failed auth attempts.</li>
+                                        <li><b>EnableBuffer:</b> BCHR and cache monitoring.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Thresholds -->
+                <div class="tab-pane fade" id="thresholds-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-4">ALERT THRESHOLDS</h5>
+                        <div class="mb-4">
+                            <textarea id="thresholds-json" class="json-editor form-control" style="height: 400px;">@Model.ThresholdsJson</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary btn-load-template" data-type="Thresholds">
+                                <i class="bi bi-magic me-1"></i> LOAD PRO TEMPLATE
+                            </button>
+                            <button class="btn btn-info fw-bold btn-save px-4" data-type="Thresholds">SAVE THRESHOLDS</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: ALERT THRESHOLDS</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>CpuHigh (90.0):</b> Critical CPU alert limit.</li>
+                                        <li><b>CpuMedium (75.0):</b> Warning CPU alert limit.</li>
+                                        <li><b>MemoryHigh (90.0):</b> RAM utilization ceiling.</li>
+                                        <li><b>PleCritical (100):</b> Urgent memory pressure alert.</li>
+                                        <li><b>PleLow (300):</b> General memory warning limit.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>BlockingSeconds (30):</b> Threshold to flag a block.</li>
+                                        <li><b>TempDbMb (20480):</b> Max TempDB space alert (20GB).</li>
+                                        <li><b>FailedLogins (10):</b> Brute-force alert count.</li>
+                                        <li><b>VlfHigh (50):</b> High fragmentation of T-Log.</li>
+                                        <li><b>BufferCache (95.0):</b> Min hit ratio targets.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Index Analysis -->
+                <div class="tab-pane fade" id="index-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-1 text-info">INDEX ANALYSIS SETTINGS</h5>
+                        <p class="text-secondary small mb-3">Optimize how the agent identifies fragmentation and missing indexes.</p>
+                        
+                        <div class="alert alert-info border-0 bg-info bg-opacity-10 py-2 small mb-4">
+                            <ul class="mb-0">
+                                <li><b>Fragmentation:</b> Threshold % to suggest REBUILD (e.g., 30%).</li>
+                                <li><b>MinPageCount:</b> Skip small tables to reduce overhead (e.g., 1000 pages).</li>
+                                <li><b>UnusedIndexDays:</b> Scan logs for indexes not used in X days.</li>
+                            </ul>
+                        </div>
+
+                        <div class="mb-4">
+                            <textarea id="index-json" class="json-editor form-control" style="height: 250px;">@Model.IndexAnalysisJson</textarea>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: INDEX ANALYSIS</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>FragThreshold (30.0):</b> Suggestions for REBUILD.</li>
+                                        <li><b>ReorgThreshold (10.0):</b> Suggestions for REORG.</li>
+                                        <li><b>UnusedDays (30):</b> Flags indexes not used recently.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>MinPageCount (1000):</b> Ignored small tables.</li>
+                                        <li><b>MinImpact (50.0):</b> Missing index score trigger.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Advanced -->
+                <div class="tab-pane fade" id="advanced-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-1 text-warning">ADVANCED CONTROLS</h5>
+                        <p class="text-secondary small mb-3">Circuit breakers, throttling, and maintenance window definitions.</p>
+                        
+                        <div class="mb-4">
+                            <textarea id="advanced-json" class="json-editor form-control" style="height: 300px;">@Model.AdvancedControlsJson</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary btn-load-template" data-type="AdvancedControls">
+                                <i class="bi bi-magic me-1"></i> LOAD PRO TEMPLATE
+                            </button>
+                            <button class="btn btn-info fw-bold btn-save px-4" data-type="AdvancedControls">SAVE ADVANCED CONTROLS</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: ADVANCED CONTROLS</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>CircuitBreaker (5):</b> Reset after X failures.</li>
+                                        <li><b>Backoff (60s):</b> Pause time when breaker trips.</li>
+                                        <li><b>ThrottleMax (120):</b> Max packets per window.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>Window (60s):</b> Throttling calculation period.</li>
+                                        <li><b>Maintenance:</b> UTC suppression hours.</li>
+                                        <li><b>HealthReport (5m):</b> Keep-alive signal interval.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: API -->
+                <div class="tab-pane fade" id="api-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-4">API SETTINGS</h5>
+                        <div class="mb-4">
+                            <textarea id="api-json" class="json-editor form-control" style="height: 300px;">@Model.ApiSettingsJson</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary btn-load-template" data-type="Api">
+                                <i class="bi bi-magic me-1"></i> LOAD PRO TEMPLATE
+                            </button>
+                            <button class="btn btn-info fw-bold btn-save px-4" data-type="Api">SAVE API SETTINGS</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: API CONNECTIVITY</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>BaseUrl:</b> Dashboard API endpoint.</li>
+                                        <li><b>ApiKey:</b> Authorization token.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>Retry (3):</b> Connection attempt limit.</li>
+                                        <li><b>Delay (1000ms):</b> Gap between retries.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Logging -->
+                <div class="tab-pane fade" id="logging-tab" role="tabpanel">
+                    <div class="glass-card">
+                        <h5 class="fw-bold mb-4">LOGGING CONFIGURATION</h5>
+                        <div class="mb-4">
+                            <textarea id="logging-json" class="json-editor form-control" style="height: 300px;">@Model.LoggingJson</textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary btn-load-template" data-type="Logging">
+                                <i class="bi bi-magic me-1"></i> LOAD PRO TEMPLATE
+                            </button>
+                            <button class="btn btn-info fw-bold btn-save px-4" data-type="Logging">SAVE LOGGING SETTINGS</button>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 text-white small">
+                            <h6 class="fw-bold mb-2">DETAILED GUIDE: LOGGING</h6>
+                            <div class="row opacity-75">
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>MinLevel:</b> Information / Debug / Error.</li>
+                                        <li><b>FilePath:</b> Worker-side local file path.</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="mb-2">
+                                        <li><b>RetainedLimit (31):</b> Max days of logs to keep.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Server Modal -->
+<div class="modal fade" id="newServerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary shadow-lg">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title fw-bold text-info">ADD TARGET SERVER</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="AddTargetServer" method="post">
+                <input type="hidden" name="WorkerConfigId" value="@Model.Id" />
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="stat-label mb-2">Alias Name</label>
+                            <input type="text" name="Alias" class="form-control bg-dark border-secondary text-white" placeholder="PROD-SQL-01" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="stat-label mb-2">Provider Type</label>
+                            <select name="ProviderType" class="form-select bg-dark border-secondary text-white">
+                                <option value="SqlServer">SQL Server</option>
+                                <option value="Postgres">PostgreSQL</option>
+                                <option value="Oracle">Oracle</option>
+                                <option value="AzureSql">Azure SQL</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="stat-label mb-2">Connection String</label>
+                            <textarea name="ConnectionString" class="form-control bg-dark border-secondary text-white" rows="3" placeholder="Server=...;Database=...;Integrated Security=True;" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="IsEnabled" checked value="true">
+                                <label class="form-check-label text-light">Server is enabled for monitoring</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-25 p-3">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CANCEL</button>
+                    <button type="submit" class="btn btn-info fw-bold px-4">ADD SERVER</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .list-group-item-action {
+        border-radius: 8px !important;
+        margin-bottom: 2px;
+        transition: all 0.2s;
+    }
+    .list-group-item-action.active {
+        background: rgba(0, 129, 255, 0.15) !important;
+        color: #00d2ff !important;
+        border-left: 3px solid #00d2ff !important;
+    }
+    .json-editor {
+        font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+        background: #000 !important;
+        color: #22d3ee !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        resize: none;
+        padding: 1rem;
+        font-size: 0.85rem;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        $(function() {
+            const serverTemplates = {
+                SqlServer: "Server=PROD-SQL-01;Database=master;User ID=sa;Password=your_password;Encrypt=True;TrustServerCertificate=True;",
+                Postgres: "Host=10.0.0.5;Database=reports;Username=monitor;Password=secure_pwd;",
+                Oracle: "Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oracle-srv)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=ORCL)));User Id=mon_user;Password=oracle_pwd;",
+                AzureSql: "Server=tcp:your-server.database.windows.net,1433;Initial Catalog=your_db;Persist Security Info=False;User ID=cloud_admin;Password=azure_pwd;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+            };
+
+            // Provider Change Handler
+            $('select[name="ProviderType"]').on('change', function() {
+                const type = $(this).val();
+                if (serverTemplates[type]) {
+                    $('textarea[name="ConnectionString"]').val(serverTemplates[type]);
+                }
+            });
+
+            // Initial trigger for SqlServer
+            $('select[name="ProviderType"]').trigger('change');
+
+            // Load Template Handler
+            $('.btn-load-template').on('click', function() {
+                const type = $(this).data('type');
+                const $textarea = $(this).closest('.tab-pane').find('textarea');
+                if (defaults[type] && confirm('Are you sure you want to load the professional template? This will replace current text.')) {
+                    $textarea.val(JSON.stringify(defaults[type], null, 2));
+                }
+            });
+
+            const defaults = {
+                Intervals: { "MetricsSeconds": 60, "QueriesSeconds": 300, "IndexesMinutes": 1440, "EventsSeconds": 15 },
+                Toggles: { "EnableMetrics": true, "EnableQueries": true, "EnableIndexAnalysis": true, "EnableBlockingDetection": true, "EnableDeadlockDetection": true, "EnableAlerts": true, "EnableApiSending": false, "EnableWaitStats": true, "EnableTempDbMonitoring": true, "EnableVlfMonitoring": true, "EnableFailedLoginTracking": true, "EnableBufferCacheMonitoring": true },
+                Thresholds: { "CpuHighPercent": 90.0, "CpuMediumPercent": 75.0, "PleLowThreshold": 300, "PleCriticalThreshold": 100, "BlockingWaitTimeSeconds": 30, "MemoryHighPercent": 90.0, "VlfHighCount": 50, "TempDbHighUsageMb": 20480.0, "FailedLoginHighCount": 10, "BufferCacheHitRatioLowThreshold": 95.0 },
+                IndexAnalysis: { "FragmentationThreshold": 30.0, "ReorganizeThreshold": 10.0, "UnusedIndexDays": 30, "MinPageCount": 1000, "MissingIndexMinImpact": 50.0 },
+                AdvancedControls: { "CircuitBreakerThreshold": 5, "CircuitBreakerBackoffSeconds": 60, "ThrottleMaxSendsPerWindow": 120, "ThrottleWindowSeconds": 60, "MaintenanceWindowsUtc": [ "02:00-04:00" ], "HealthReportIntervalMinutes": 5 },
+                Api: { "BaseUrl": "http://localhost:5230", "ApiKey": "CHANGE_ME_API_KEY", "TimeoutSeconds": 30, "RetryCount": 3, "RetryDelayMs": 1000 },
+
+                Logging: { "MinimumLevel": "Information", "FilePath": "Logs/monitoring-.log", "RetainedFileCountLimit": 31 }
+            };
+
+            // Pre-fill and prettify
+            $('.json-editor').each(function() {
+                const $el = $(this);
+                let val = $el.val();
+                const type = $el.data('type') || $el.closest('.tab-pane').attr('id').split('-')[0];
+                const cappedType = type.charAt(0).toUpperCase() + type.slice(1);
+                
+                if (!val || val === "{}" || val === "") {
+                    if (defaults[cappedType]) {
+                        $el.val(JSON.stringify(defaults[cappedType], null, 2));
+                    }
+                } else {
+                    try { $el.val(JSON.stringify(JSON.parse(val), null, 2)); } catch(e) {}
+                }
+            });
+
+            $('.btn-save').on('click', function() {
+                const $btn = $(this);
+                const type = $btn.data('type');
+                const json = $btn.closest('.tab-pane').find('textarea').val();
+                try { JSON.parse(json); } catch(e) { alert('Invalid JSON syntax'); return; }
+
+                $btn.prop('disabled', true).text('SAVING...');
+                $.post('/Servers/UpdateParams', { id: @Model.Id, type: type, json: json })
+                    .done(() => { 
+                        $btn.removeClass('btn-info').addClass('btn-success').text('✓ SAVED');
+                        setTimeout(() => $btn.removeClass('btn-success').addClass('btn-info').prop('disabled', false).text(`SAVE ${type.toUpperCase()}`), 2000);
+                    });
+            });
+        });
+
+        function saveDBFilters() {
+            const include = $('#include-dbs').val();
+            const exclude = $('#exclude-dbs').val();
+            // We'll reuse UpdateParams for DBs
+            $.post('/Servers/UpdateParams', { id: @Model.Id, type: 'DBs', json: JSON.stringify({ include, exclude }) })
+                .done(() => alert('Database filters saved successfully.'));
+        }
+    </script>
+}

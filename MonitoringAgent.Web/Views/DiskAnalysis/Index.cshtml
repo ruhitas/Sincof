@@ -1,0 +1,131 @@
+@model IEnumerable<MonitoringAgent.Web.Data.DiskTestLog>
+
+@{
+    ViewData["Title"] = "Disk Performance Analysis";
+}
+
+<div class="container-fluid py-4 bg-dark text-white min-vh-100" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);">
+    <div class="row mb-4 animate__animated animate__fadeInDown">
+        <div class="col-8">
+            <h1 class="display-5 fw-bold" style="background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                <i class="fas fa-hdd me-2"></i>Disk Performance Logs
+            </h1>
+            <div class="d-flex gap-3">
+                <p class="text-secondary small mb-0">Track history and analyze results.</p>
+                <div class="input-group input-group-sm w-50">
+                    <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fas fa-search"></i></span>
+                    <input type="text" id="logSearch" class="form-control bg-dark text-white border-secondary" placeholder="Filter by Server, Path or Date...">
+                </div>
+            </div>
+        </div>
+        <div class="col-4 text-end d-flex align-items-center justify-content-end">
+            <!-- Import Form -->
+            <form asp-action="Import" method="post" enctype="multipart/form-data" class="d-flex align-items-center gap-2">
+                <input type="file" name="jsonFile" class="form-control form-control-sm bg-dark text-white border-secondary" accept=".json" />
+                <button type="submit" class="btn btn-primary btn-sm shadow-sm">
+                    <i class="fas fa-file-import me-1"></i>Import JSON
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm animate__animated animate__fadeInUp">
+            <i class="fas fa-check-circle me-1"></i> @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger border-0 shadow-sm animate__animated animate__fadeInUp">
+            <i class="fas fa-exclamation-triangle me-1"></i> @TempData["Error"]
+        </div>
+    }
+
+    <div class="card bg-dark border-0 shadow-lg rounded-4 overflow-hidden animate__animated animate__fadeIn">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-dark mb-0 align-middle">
+                    <thead class="bg-black text-secondary">
+                        <tr>
+                            <th class="ps-4">Server</th>
+                            <th>Time</th>
+                            <th>Config (Sz/Dur/W%/Blk/Th/QD)</th>
+                            <th>IOPS</th>
+                            <th>MB/s</th>
+                            <th>Latency</th>
+                            <th>CPU</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-secondary border-opacity-25">
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-white">@item.ServerName</span><br />
+                                    <small class="text-secondary opacity-75">@item.TestPath</small>
+                                </td>
+                                <td>@item.TestTime.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <span class="text-secondary small">
+                                        @(item.FileSizeGB)G | @(item.DurationSec)s | @(item.WritePercent)%W | @(item.BlockSizeKB)K | @(item.Threads)T | @(item.QueueDepth)Q
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-10 px-3 py-2 rounded-pill">
+                                        @item.IOPS.ToString("N0")
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-10 px-3 py-2 rounded-pill">
+                                        @item.MBps.ToString("N2") MB/s
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-info">@item.LatencyMs.ToString("N3") ms</span>
+                                </td>
+                                <td>
+                                    <div class="progress bg-secondary bg-opacity-10 rounded-pill" style="height: 6px; width: 80px;">
+                                        <div class="progress-bar bg-warning rounded-pill" style="width: @(item.CpuUsagePercent)%;"></div>
+                                    </div>
+                                    <small class="text-secondary mt-1">@item.CpuUsagePercent.ToString("N1")%</small>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm border-0 bg-transparent hover-light">
+                                            <i class="fas fa-chart-line text-info"></i>
+                                        </a>
+                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Are you sure?');">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm border-0 bg-transparent hover-light">
+                                                <i class="fas fa-trash-alt text-danger"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-light:hover { background-color: rgba(255,255,255,0.05) !important; }
+    .card { background-color: rgba(15, 23, 42, 0.6) !important; backdrop-filter: blur(10px); }
+    .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.03) !important; }
+    .badge { font-weight: 500; font-size: 0.85rem; }
+</style>
+
+<script>
+    document.getElementById('logSearch').addEventListener('keyup', function() {
+        let val = this.value.toLowerCase();
+        let rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            let text = row.innerText.toLowerCase();
+            row.style.display = text.includes(val) ? '' : 'none';
+        });
+    });
+</script>

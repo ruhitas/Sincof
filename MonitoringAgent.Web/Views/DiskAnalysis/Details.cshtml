@@ -1,0 +1,200 @@
+@model MonitoringAgent.Web.Data.DiskTestLog
+
+@{
+    ViewData["Title"] = "Detailed Disk Report";
+
+    // Performance threshold evaluations
+    string iopsGrade = Model.IOPS > 5000 ? "Excellent" : Model.IOPS > 1000 ? "Good" : "Poor";
+    string iopsColor = Model.IOPS > 5000 ? "text-success" : Model.IOPS > 1000 ? "text-warning" : "text-danger";
+
+    string mbpsGrade = Model.MBps > 200 ? "Excellent" : Model.MBps > 50 ? "Good" : "Poor";
+    string mbpsColor = Model.MBps > 200 ? "text-success" : Model.MBps > 50 ? "text-warning" : "text-danger";
+
+    string latGrade = Model.LatencyMs < 2 ? "Excellent" : Model.LatencyMs < 15 ? "Good" : "Critical";
+    string latColor = Model.LatencyMs < 2 ? "text-success" : Model.LatencyMs < 15 ? "text-warning" : "text-danger";
+}
+
+<div class="container-fluid py-4 text-white min-vh-100" style="background: #0f172a;">
+    <div class="row align-items-center mb-4">
+        <div class="col-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb bg-transparent p-0 mb-2">
+                    <li class="breadcrumb-item"><a asp-action="Index" class="text-secondary">Disk Logs</a></li>
+                    <li class="breadcrumb-item active text-white fw-bold">Report: @Model.RequestId</li>
+                </ol>
+            </nav>
+            <h1 class="display-6 fw-bold text-white">
+                <i class="fas fa-file-contract text-primary me-3"></i>Performance Analysis Report
+            </h1>
+        </div>
+        <div class="col-4 text-end">
+            <button onclick="window.print()" class="btn btn-outline-light rounded-pill px-4 me-2">
+                <i class="fas fa-print me-2"></i>Print Report
+            </button>
+            <a asp-action="Index" class="btn btn-primary rounded-pill px-4">
+                <i class="fas fa-arrow-left me-2"></i>Back to Logs
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Summary Cards -->
+        <div class="col-md-3 mb-4">
+            <div class="card bg-dark border-secondary h-100 p-4 text-center rounded-4 shadow-sm border-opacity-25 glass">
+                <i class="fas fa-tachometer-alt fa-2x text-primary mb-3"></i>
+                <h6 class="text-secondary small text-uppercase fw-bold letter-spacing-1">IOPS Result</h6>
+                <h2 class="fw-bold mb-0 text-white">@Model.IOPS.ToString("N0")</h2>
+                <span class="badge bg-dark border mt-2 @iopsColor border-opacity-25">@iopsGrade</span>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card bg-dark border-secondary h-100 p-4 text-center rounded-4 shadow-sm border-opacity-25 glass">
+                <i class="fas fa-bolt fa-2x text-success mb-3"></i>
+                <h6 class="text-secondary small text-uppercase fw-bold letter-spacing-1">Throughput</h6>
+                <h2 class="fw-bold mb-0 text-white">@Model.MBps.ToString("N2") <small class="h6">MB/s</small></h2>
+                <span class="badge bg-dark border mt-2 @mbpsColor border-opacity-25">@mbpsGrade</span>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card bg-dark border-secondary h-100 p-4 text-center rounded-4 shadow-sm border-opacity-25 glass">
+                <i class="fas fa-clock fa-2x text-info mb-3"></i>
+                <h6 class="text-secondary small text-uppercase fw-bold letter-spacing-1">Avg Latency</h6>
+                <h2 class="fw-bold mb-0 text-white">@Model.LatencyMs.ToString("N3") <small class="h6">ms</small></h2>
+                <span class="badge bg-dark border mt-2 @latColor border-opacity-25">@latGrade</span>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card bg-dark border-secondary h-100 p-4 text-center rounded-4 shadow-sm border-opacity-25 glass">
+                <i class="fas fa-microchip fa-2x text-warning mb-3"></i>
+                <h6 class="text-secondary small text-uppercase fw-bold letter-spacing-1">CPU Load</h6>
+                <h2 class="fw-bold mb-0 text-white">@Model.CpuUsagePercent.ToString("N1") <small class="h6">%</small></h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-lg-6">
+            <div class="card bg-dark border-secondary rounded-4 p-4 shadow-sm h-100 glass">
+                <h5 class="fw-bold text-white mb-4"><i class="fas fa-info-circle me-2 text-primary"></i>General Metadata</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-secondary">Server Name</dt>
+                    <dd class="col-sm-8 text-white">@Model.ServerName</dd>
+
+                    <dt class="col-sm-4 text-secondary">Test Path</dt>
+                    <dd class="col-sm-8 text-white text-break"><code>@Model.TestPath</code></dd>
+
+                    <dt class="col-sm-4 text-secondary">Test Date (UTC)</dt>
+                    <dd class="col-sm-8 text-white">@Model.TestTime.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+                    <dt class="col-sm-4 text-secondary">Success State</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.Success) {
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3">Passed</span>
+                        } else {
+                            <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 px-3">Failed</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card bg-dark border-secondary rounded-4 p-4 shadow-sm h-100 glass">
+                <h5 class="fw-bold text-white mb-4"><i class="fas fa-sliders-h me-2 text-success"></i>Test Parameters</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="p-3 mb-3 bg-black rounded-3 border border-secondary border-opacity-25">
+                            <span class="text-secondary d-block small mb-1">File Size / Duration</span>
+                            <span class="text-white fw-bold">@Model.FileSizeGB GB / @Model.DurationSec s</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 mb-3 bg-black rounded-3 border border-secondary border-opacity-25">
+                            <span class="text-secondary d-block small mb-1">Write Ratio / Block Size</span>
+                            <span class="text-white fw-bold">@Model.WritePercent% Write / @Model.BlockSizeKB KB</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 mb-0 bg-black rounded-3 border border-secondary border-opacity-25">
+                            <span class="text-secondary d-block small mb-1">Threads / Queue Depth</span>
+                            <span class="text-white fw-bold">@Model.Threads / @Model.QueueDepth</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25">
+                    <h6 class="text-info fw-bold mb-2"><i class="fas fa-lightbulb me-2"></i>Analysis Recommendations</h6>
+                    <ul class="text-secondary small mb-0 ps-3">
+                        @if (Model.LatencyMs > 15) {
+                            <li class="mb-1 text-warning">High average latency detected (> 15ms). SQL Server databases typically require 10ms for optimal performance. Consider investigating storage queues or underlying hardware.</li>
+                        } else {
+                            <li class="mb-1 text-success">Storage latency is within acceptable limits.</li>
+                        }
+
+                        @if (Model.MBps < 50) {
+                            <li class="mb-1 text-danger">Extremely low throughput (MB/s). Check if there are IO limits imposed by the virtual machine provider or if hardware caching is disabled unnecessarily.</li>
+                        }
+
+                        @if (Model.IOPS < 1000) {
+                            <li class="mb-1 text-warning">Low IOPS count. This storage may struggle with high-transaction (OLTP) database workloads.</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw Output Tabular/Preformatted Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 rounded-4 shadow-lg overflow-hidden glass" style="background: #111827;">
+                <div class="card-header bg-black text-white p-4 border-0 d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 fw-bold underline-dashed"><i class="fas fa-terminal me-2 text-warning"></i>Raw Output (DiskSpd Standard Stream)</h5>
+                    <button id="copyBtn" class="btn btn-sm btn-outline-secondary" onclick="copyRaw()">
+                        <i class="fas fa-copy me-1"></i>Copy Output
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <pre id="rawContent" class="text-secondary p-4 m-0" style="max-height: 500px; overflow-y: auto; font-family: 'Consolas', 'Monaco', monospace; line-height: 1.5; font-size: 0.85rem;">@Model.RawOutput</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .glass {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(15px);
+        transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .glass:hover {
+        transform: translateY(-5px);
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    pre::-webkit-scrollbar { width: 8px; }
+    pre::-webkit-scrollbar-track { background: transparent; }
+    pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    .letter-spacing-1 { letter-spacing: 1.2px; }
+    .underline-dashed { border-bottom: 2px dashed rgba(255,255,255,0.1); padding-bottom: 5px; }
+
+    @@media print {
+        .btn, nav, .col-4 { display: none !important; }
+        .card { background: white !important; color: black !important; border: 1px solid #ccc !important; }
+        .text-white, .display-6, .h2 { color: black !important; }
+        .bg-dark, #0f172a, .bg-black { background: white !important; }
+        pre { white-space: pre-wrap !important; overflow: visible !important; color: black !important; }
+    }
+</style>
+
+<script>
+    function copyRaw() {
+        const text = document.getElementById('rawContent').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('copyBtn');
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(() => btn.innerHTML = original, 2000);
+        });
+    }
+</script>

@@ -1,0 +1,197 @@
+@using MonitoringAgent.Web.Models
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Monitoring Dashboard";
+}
+
+<div class="container-fluid py-1">
+    <div class="row pt-0 mb-2 align-items-center">
+        <div class="col-md-8">
+            <h1 class="fw-bold mb-0">MONITORING <span class="text-info">DASHBOARD</span></h1>
+            <p class="text-secondary small">Real-time health status and performance insights.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <form method="get" id="dbSelectorForm" class="d-inline-block">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark border-secondary text-info">
+                        <i class="bi bi-database"></i> DB Type:
+                    </span>
+                    <select name="dbType" class="form-select bg-dark border-secondary text-white" onchange="this.form.submit()">
+                        <option value="All" selected="@(Model.SelectedDbType == "All")">All Databases</option>
+                        <option value="SqlServer" selected="@(Model.SelectedDbType == "SqlServer")">SQL Server</option>
+                        <option value="Postgres" selected="@(Model.SelectedDbType == "Postgres")">PostgreSQL</option>
+                        <option value="Oracle" selected="@(Model.SelectedDbType == "Oracle")">Oracle</option>
+                        <option value="MySql" selected="@(Model.SelectedDbType == "MySql")">MySQL</option>
+                        <option value="AzureSql" selected="@(Model.SelectedDbType == "AzureSql")">Azure SQL</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-12 col-md-3 mb-3">
+            <div class="glass-card text-center h-100">
+                <div class="stat-label">Active Alerts</div>
+                <div class="stat-value @(Model.TotalAlerts > 0 ? "text-warning" : "text-success")">@Model.TotalAlerts</div>
+                <div class="text-secondary small mt-2 d-flex justify-content-between px-3">
+                    <span>Critical: <span class="text-danger fw-bold">@Model.HighSeverityAlerts</span></span>
+                    <span>Avg Impact: <span class="text-info">@Model.AverageImpactScore.ToString("N0")</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3 mb-3">
+            <div class="glass-card text-center h-100">
+                @{
+                    var firstMetric = Model.LastMetrics.FirstOrDefault();
+                    if (Model.SelectedDbType == "AzureSql")
+                    {
+                        var target = firstMetric?.WorkerUtilizationPercent ?? 0;
+                        var cssClass = target > 90 ? "text-danger fw-bold" : (target > 70 ? "text-warning" : "text-success");
+                        <div class="stat-label">Worker Utilization</div>
+                        <div class="stat-value @cssClass">@Math.Round(target, 1) <span style="font-size: 1rem">%</span></div>
+                        <div class="text-secondary small mt-2">DTU/vCore Load</div>
+                    }
+                    else if (Model.SelectedDbType == "Postgres" || Model.SelectedDbType == "MySql" || Model.SelectedDbType == "Oracle")
+                    {
+                        var target = firstMetric?.BufferCacheHitRatio ?? 0;
+                        var cssClass = target < 85 ? "text-danger fw-bold" : (target < 95 ? "text-warning" : "text-success");
+                        <div class="stat-label">Cache Hit Ratio</div>
+                        <div class="stat-value @cssClass">@Math.Round(target, 1) <span style="font-size: 1rem">%</span></div>
+                        <div class="text-secondary small mt-2">Memory Read Efficiency</div>
+                    }
+                    else
+                    {
+                        var lastPle = firstMetric?.PLE ?? 0;
+                        var pleClass = lastPle < 300 ? "text-danger fw-bold" : (lastPle < 1000 ? "text-warning" : "text-success");
+                        <div class="stat-label">Last PLE reading</div>
+                        <div class="stat-value @pleClass">@lastPle<span style="font-size: 1rem">s</span></div>
+                        <div class="text-secondary small mt-2">Buffer Cache Health</div>
+                    }
+                }
+            </div>
+        </div>
+        <div class="col-12 col-md-3 mb-3">
+            <div class="glass-card text-center h-100">
+                <div class="stat-label">System Blockers (24h)</div>
+                <div class="stat-value @(Model.RecentDeadlocksCount > 0 ? "text-danger" : "text-info")">@Model.RecentDeadlocksCount</div>
+                <div class="text-secondary small mt-2 d-flex justify-content-between px-3">
+                    <span>Deadlocks: <span class="text-danger fw-bold">@Model.RecentDeadlocksCount</span></span>
+                    <span>Blocking: <span>@Model.ActiveBlockingCount</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3 mb-3">
+            <div class="glass-card text-center h-100">
+                <div class="stat-label">Optimization</div>
+                <div class="stat-value @(Model.MissingIndexesCount > 10 ? "text-warning" : "text-success")">@Model.MissingIndexesCount</div>
+                <div class="text-secondary small mt-2">Missing Indexes Detected</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- CPU Trend Chart -->
+        <div class="col-12 col-xl-8 mb-4">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">CPU Performance Trend</h5>
+                    <a asp-controller="Analysis" asp-action="Index" class="btn btn-sm btn-outline-info">Detail Analysis</a>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cpuTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="col-12 col-xl-4 mb-4">
+            <div class="glass-card">
+                <h5 class="mb-4">Recent Security & Performance Alerts</h5>
+                <div class="alert-list" style="max-height: 400px; overflow-y: auto;">
+                    @if (Model.RecentAlerts.Count == 0)
+                    {
+                        <div class="text-center py-5 text-secondary">
+                            No recent alerts found.
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var alert in Model.RecentAlerts)
+                        {
+                            var severityClass = alert.Severity == "High" ? "badge-danger" : (alert.Severity == "Medium" ? "badge-warning" : "badge-success");
+                            <div class="alert-item py-3">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="status-badge @severityClass">@alert.Severity</span>
+                                        @if (alert.OccurrenceCount > 1)
+                                        {
+                                            <span class="badge bg-secondary rounded-pill" style="font-size: 0.7rem;">x @alert.OccurrenceCount</span>
+                                        }
+                                    </div>
+                                    <span class="alert-time">@alert.LatestRaisedAt.AddHours(3).ToString("HH:mm")</span>
+                                </div>
+                                <div class="alert-msg fw-bold mt-2">@alert.Category: @alert.Message</div>
+                                <div class="text-secondary small mt-1">@alert.DatabaseName (@alert.ServerName)</div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="text-center mt-4 pt-3 border-top border-secondary">
+                    <a asp-controller="Alerts" asp-action="Index" class="text-info text-decoration-none small">VIEW ALL INCIDENTS →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('cpuTrendChart').getContext('2d');
+            
+            // Sample data from model or dynamic array
+            const trendData = @Html.Raw(Json.Serialize(Model.PerformanceTrend));
+            
+            const labels = trendData ? trendData.map(d => new Date(d.timestamp || d.Timestamp).toLocaleTimeString()) : [];
+            const values = trendData ? trendData.map(d => d.cpuUsagePercent || d.CpuUsagePercent) : [];
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: 'CPU Usage %',
+                        data: values.reverse(),
+                        borderColor: '#0081ff',
+                        backgroundColor: 'rgba(0, 129, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 2,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}
