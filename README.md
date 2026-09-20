@@ -1,4 +1,4 @@
-# MonitoringAgent
+﻿# MonitoringAgent
 
 Multi-provider database monitoring agent and web dashboard for SQL Server, Azure SQL, PostgreSQL, MySQL, and Oracle.
 
@@ -30,7 +30,7 @@ Target DBs  -->  Worker (collect / analyze)  -->  Web API + Dashboard (LocalDB /
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - SQL Server LocalDB **or** SQL Server / Azure SQL (for the dashboard database)
 - Optional targets: PostgreSQL, MySQL, Oracle (enable the matching feature toggles)
-- Optional: [DiskSpd](https://github.com/microsoft/diskspd) (bundled under `MonitoringAgent.Worker/DiskSpd` — see Microsoft EULA in that folder)
+- Optional: [DiskSpd](https://github.com/microsoft/diskspd) (bundled under `MonitoringAgent.Worker/DiskSpd` ÔÇö see Microsoft EULA in that folder)
 
 ---
 
@@ -127,18 +127,18 @@ With API sending enabled, the Worker posts payloads to the Web app. You can also
 
 - `EnableMetrics`, `EnableQueries`, `EnableIndexAnalysis`
 - `EnableBlockingDetection`, `EnableDeadlockDetection`, `EnableAlerts`
-- `EnableApiSending` — send results to the Web API
+- `EnableApiSending` ÔÇö send results to the Web API
 - `EnablePostgres`, `EnableMySql`, `EnableOracle`, `EnableAzureSql`
-- `EnableDiskSpd` — Windows DiskSpd benchmark (off by default in the public sample)
+- `EnableDiskSpd` ÔÇö Windows DiskSpd benchmark (off by default in the public sample)
 
 ---
 
 ## Web UI overview
 
-- **Dashboard** — recent metrics and health
-- **Servers / Workers** — manage worker configs and target servers
-- **Queries / Indexes / Alerts / Blocking / Deadlocks** — analysis views
-- **Offline Import** — import `payload_YYYYMMDD_HHMMSS.json` files from a folder
+- **Dashboard** ÔÇö recent metrics and health
+- **Servers / Workers** ÔÇö manage worker configs and target servers
+- **Queries / Indexes / Alerts / Blocking / Deadlocks** ÔÇö analysis views
+- **Offline Import** ÔÇö import `payload_YYYYMMDD_HHMMSS.json` files from a folder
 
 Default API key placeholder used in templates: `CHANGE_ME_API_KEY` (change it before enabling `EnableApiSending`).
 
@@ -194,19 +194,19 @@ dotnet run --project MonitoringAgent.Worker
 
 ```
 MonitoringAgent/
-├── MonitoringAgent.sln
-├── MonitoringAgent.Core/
-├── MonitoringAgent.Infrastructure/
-├── MonitoringAgent.Application/
-├── MonitoringAgent.Worker/
-│   ├── appsettings.json
-│   ├── appsettings.*.json          # provider samples
-│   └── DiskSpd/                    # optional DiskSpd binaries + EULA
-└── MonitoringAgent.Web/
-    ├── Controllers/
-    ├── Views/
-    ├── Data/
-    └── appsettings.json
+Ôö£ÔöÇÔöÇ MonitoringAgent.sln
+Ôö£ÔöÇÔöÇ MonitoringAgent.Core/
+Ôö£ÔöÇÔöÇ MonitoringAgent.Infrastructure/
+Ôö£ÔöÇÔöÇ MonitoringAgent.Application/
+Ôö£ÔöÇÔöÇ MonitoringAgent.Worker/
+Ôöé   Ôö£ÔöÇÔöÇ appsettings.json
+Ôöé   Ôö£ÔöÇÔöÇ appsettings.*.json          # provider samples
+Ôöé   ÔööÔöÇÔöÇ DiskSpd/                    # optional DiskSpd binaries + EULA
+ÔööÔöÇÔöÇ MonitoringAgent.Web/
+    Ôö£ÔöÇÔöÇ Controllers/
+    Ôö£ÔöÇÔöÇ Views/
+    Ôö£ÔöÇÔöÇ Data/
+    ÔööÔöÇÔöÇ appsettings.json
 ```
 
 ---
